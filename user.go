@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"log"
+	"net"
+)
 
 type User struct {
 	Name string
@@ -49,15 +52,31 @@ func (u *User) Logout() {
 }
 
 func (u *User) Send(msg string) {
-	u.server.Broadcast(u, msg)
+	switch msg {
+	case "who":
+		// list all users
+		u.server.mapLock.Lock()
+		for _, user := range u.server.OnlineMap {
+			onlineMsg := "[" + user.Addr + "]" + user.Name + ": I am online."
+			u.ch <- onlineMsg
+		}
+	case "whoami":
+		u.ch <- u.Name
+		u.server.mapLock.Unlock()
+		break
+	default:
+		u.server.Broadcast(u, msg)
+	}
 }
 
 // ListenMessage listens the user channel and send message to the client
 func (u *User) ListenMessage() {
-	defer u.conn.Close()
-
 	for {
 		msg := <-u.ch
-		u.conn.Write([]byte(msg + "\n"))
+		_, err := u.conn.Write([]byte(msg + "\n"))
+		if err != nil {
+			log.Println("Failed writing to socket, err:" + err.Error())
+			continue
+		}
 	}
 }

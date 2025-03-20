@@ -23,7 +23,12 @@ type Server struct {
 
 // NewServer creates a new server based on the given ip and port
 func NewServer(ip string, port int) *Server {
-	return &Server{Ip: ip, Port: port, OnlineMap: make(map[string]*User), Message: make(chan string)}
+	return &Server{
+		Ip:        ip,
+		Port:      port,
+		OnlineMap: make(map[string]*User),
+		Message:   make(chan string),
+	}
 }
 
 // ListenAndBroadcast listens to the server message channel and broadcast the message to all the clients
@@ -47,8 +52,15 @@ func (s *Server) Broadcast(user *User, msg string) {
 
 // Handler reads from connection and handles the requests
 func (s *Server) Handler(conn net.Conn) {
-	defer conn.Close()
-	// TODO
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Printf("Error closing connection: %v", err)
+		}
+	}(conn)
+
+	// TODO: handler function
+
 	// create user
 	user := NewUser(conn, s)
 
@@ -86,7 +98,12 @@ func (s *Server) Run() {
 		panic("net.Listen failed, err: " + err.Error())
 	}
 	// close listen socket
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			log.Printf("Error closing listener: %v", err)
+		}
+	}(listener)
 
 	go s.ListenAndBroadcast()
 
