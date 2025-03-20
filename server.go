@@ -46,7 +46,7 @@ func (s *Server) ListenAndBroadcast() {
 
 // Broadcast sends the user message to the server message channel
 func (s *Server) Broadcast(user *User, msg string) {
-	sendMsg := "[" + user.Addr + "] " + user.Name + ": " + msg
+	sendMsg := "[" + user.Addr + "]" + user.Name + ": " + msg
 	s.Message <- sendMsg
 }
 

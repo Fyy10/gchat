@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -52,7 +53,8 @@ func (u *User) Logout() {
 }
 
 func (u *User) Send(msg string) {
-	switch msg {
+	cmd := strings.Split(msg, " ")[0]
+	switch cmd {
 	case "who":
 		// list all users
 		u.server.mapLock.Lock()
@@ -64,6 +66,27 @@ func (u *User) Send(msg string) {
 		break
 	case "whoami":
 		u.ch <- u.Name
+		break
+	case "rename":
+		l := strings.Split(msg, " ")
+		if len(l) != 2 {
+			u.ch <- "Username cannot be empty or contain spaces."
+			break
+		}
+
+		newName := l[1]
+		// check if name exists
+		_, ok := u.server.OnlineMap[newName]
+		if ok {
+			u.ch <- "Username " + newName + " already exists."
+		} else {
+			u.server.mapLock.Lock()
+			delete(u.server.OnlineMap, u.Name)
+			u.Name = newName
+			u.server.OnlineMap[newName] = u
+			u.server.mapLock.Unlock()
+			u.ch <- "Username has been successfully set to " + u.Name + "."
+		}
 		break
 	default:
 		u.server.Broadcast(u, msg)
