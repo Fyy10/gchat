@@ -60,9 +60,10 @@ func (u *User) Send(msg string) {
 			onlineMsg := "[" + user.Addr + "]" + user.Name + ": I am online."
 			u.ch <- onlineMsg
 		}
+		u.server.mapLock.Unlock()
+		break
 	case "whoami":
 		u.ch <- u.Name
-		u.server.mapLock.Unlock()
 		break
 	default:
 		u.server.Broadcast(u, msg)
