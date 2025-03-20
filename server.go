@@ -50,15 +50,9 @@ func (s *Server) Handler(conn net.Conn) {
 	defer conn.Close()
 	// TODO
 	// create user
-	user := NewUser(conn)
+	user := NewUser(conn, s)
 
-	// add user to online map
-	s.mapLock.Lock()
-	s.OnlineMap[user.Name] = user
-	s.mapLock.Unlock()
-
-	// broadcast user online message
-	s.Broadcast(user, "Online")
+	user.Login()
 
 	// read from conn and send message
 	go func() {
@@ -66,7 +60,7 @@ func (s *Server) Handler(conn net.Conn) {
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				s.Broadcast(user, "Offline")
+				user.Logout()
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -76,7 +70,7 @@ func (s *Server) Handler(conn net.Conn) {
 
 			msg := string(buf[:n])
 			msg = strings.TrimSpace(msg)
-			s.Broadcast(user, msg)
+			user.Send(msg)
 		}
 	}()
 
