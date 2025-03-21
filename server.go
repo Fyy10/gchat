@@ -7,6 +7,11 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
+)
+
+const (
+	Timeout = 600 // seconds
 )
 
 type Server struct {
@@ -44,7 +49,7 @@ func (s *Server) ListenAndBroadcast() {
 	}
 }
 
-// Broadcast sends the user message to the server message channel
+// Broadcast sends the user/client message to the server message channel
 func (s *Server) Broadcast(user *User, msg string) {
 	sendMsg := "[" + user.Addr + "]" + user.Name + ": " + msg
 	s.Message <- sendMsg
@@ -52,27 +57,20 @@ func (s *Server) Broadcast(user *User, msg string) {
 
 // Handler reads from connection and handles the requests
 func (s *Server) Handler(conn net.Conn) {
-	defer func(conn net.Conn) {
-		err := conn.Close()
-		if err != nil {
-			log.Printf("Error closing connection: %v", err)
-		}
-	}(conn)
-
-	// TODO: handler function
-
 	// create user
 	user := NewUser(conn, s)
 
 	user.Login()
 
-	// read from conn and send message
+	isActive := make(chan bool)
+
+	// read from conn and process messages
 	go func() {
+		defer user.Logout()
 		buf := make([]byte, 2048)
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				user.Logout()
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -82,12 +80,29 @@ func (s *Server) Handler(conn net.Conn) {
 
 			msg := string(buf[:n])
 			msg = strings.TrimSpace(msg)
-			user.Send(msg)
+			user.ProcessMsg(msg)
+			// any msg from user indicates that the user is active
+			isActive <- true
 		}
 	}()
 
-	// block
-	select {}
+	// set timer
+	for {
+		select {
+		case <-isActive:
+			break
+		case <-time.After(time.Second * Timeout):
+			// timeout
+			// kick out the user
+			user.SendMsg("You are kicked out for being inactive.")
+			err := conn.Close()
+			if err != nil {
+				log.Printf("Error closing connection: %v", err)
+			}
+			// after the user is kicked out, the current handler function should also return
+			return
+		}
+	}
 }
 
 // Run starts the server and listen to the socket
@@ -95,7 +110,7 @@ func (s *Server) Run() {
 	// listen socket
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if err != nil {
-		panic("net.Listen failed, err: " + err.Error())
+		log.Fatalln("net.Listen failed, err: " + err.Error())
 	}
 	// close listen socket
 	defer func(listener net.Listener) {
@@ -114,6 +129,7 @@ func (s *Server) Run() {
 			log.Println("Accept failed, err: " + err.Error())
 			continue
 		}
+		log.Println("Established connection from: " + conn.RemoteAddr().String())
 
 		// do handler
 		go s.Handler(conn)
