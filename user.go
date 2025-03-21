@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	CmdHelp   = "help"
 	CmdWho    = "who"
 	CmdWhoAmI = "whoami"
 	CmdRename = "rename"
@@ -47,6 +48,9 @@ func (u *User) Login() {
 
 	// broadcast user login message
 	u.server.Broadcast(u, "Login")
+
+	// welcome the user
+	u.ch <- "Welcome to gchat! Please type \"help\" for details."
 }
 
 // Logout deletes the user from the OnlineMap and broadcasts the Logout information to all the users
@@ -73,6 +77,14 @@ func (u *User) SendMsg(msg string) {
 func (u *User) ProcessMsg(msg string) {
 	cmd := strings.Split(msg, " ")[0]
 	switch cmd {
+	case CmdHelp:
+		u.ch <- `Supported commands:
+who: list all online users
+whoami: show your username
+rename [username]: change your username to [username]
+@[user] [message]: send private [message] to the dedicated [user]
+[message]: send [message] to everyone online`
+		break
 	case CmdWho:
 		// list all users
 		u.server.mapLock.Lock()
@@ -107,7 +119,29 @@ func (u *User) ProcessMsg(msg string) {
 		}
 		break
 	default:
-		u.server.Broadcast(u, msg)
+		if cmd[:1] == "@" {
+			// private chat
+			targetUserName := cmd[1:]
+			if targetUserName == "" {
+				u.ch <- "Target user cannot be empty."
+				return
+			}
+			if targetUserName == u.Name {
+				u.ch <- "Hey " + u.Name + "! You are talking to yourself."
+				return
+			}
+			targetUser, ok := u.server.OnlineMap[targetUserName]
+			if ok {
+				sendMsg := "[" + u.Addr + "]" + u.Name + ": " + msg
+				targetUser.ch <- sendMsg
+				u.ch <- sendMsg
+			} else {
+				u.ch <- "User " + targetUserName + " is not online."
+			}
+		} else {
+			// public chat
+			u.server.Broadcast(u, msg)
+		}
 	}
 }
 
