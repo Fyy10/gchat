@@ -86,6 +86,7 @@ func (u *User) ProcessMsg(msg string) {
 	switch cmd {
 	case CmdHelp:
 		u.ch <- `Supported commands:
+help: show this help message
 who: list all online users
 whoami: show your username
 rename [username]: change your username to [username]
