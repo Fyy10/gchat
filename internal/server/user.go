@@ -75,6 +75,13 @@ func (u *User) SendMsg(msg string) {
 
 // ProcessMsg processes the message sent from user/client
 func (u *User) ProcessMsg(msg string) {
+	msg = strings.TrimSpace(msg)
+
+	// skip empty message
+	if len(msg) == 0 {
+		return
+	}
+
 	cmd := strings.Split(msg, " ")[0]
 	switch cmd {
 	case CmdHelp:

@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"strings"
 	"sync"
 	"time"
 )
@@ -79,7 +78,6 @@ func (s *Server) Handler(conn net.Conn) {
 			}
 
 			msg := string(buf[:n])
-			msg = strings.TrimSpace(msg)
 			user.ProcessMsg(msg)
 			// any msg from user indicates that the user is active
 			isActive <- true
@@ -129,7 +127,7 @@ func (s *Server) Run() {
 			log.Println("Accept failed, err: " + err.Error())
 			continue
 		}
-		log.Println("Established connection from: " + conn.RemoteAddr().String())
+		log.Println("Established connection from " + conn.RemoteAddr().String())
 
 		// do handler
 		go s.Handler(conn)
