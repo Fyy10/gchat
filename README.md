@@ -2,6 +2,13 @@
 
 A simple C/S architecture chat app written in Go.
 
+* [gchat](#gchat)
+  * [Build](#build)
+    * [Go build](#go-build)
+    * [Make](#make)
+  * [Usage](#usage)
+    * [Client commands](#client-commands)
+
 ## Build
 
 ### Go build
@@ -26,7 +33,7 @@ Build server & client:
 make
 ```
 
-The executables will be in the `./bin/` folder
+The executables will be in the `./bin/` folder.
 
 Clean up builds:
 
@@ -59,3 +66,5 @@ Client:
 - `@user`: talk to an online user privately
 
 Please type `help` in client for more details.
+
+To exit the client, type `Ctrl + D` on Linux/MacOS, or `Ctrl + Z` and then `Enter` on Windows.

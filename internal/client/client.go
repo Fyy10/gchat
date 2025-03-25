@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,21 +35,24 @@ func NewClient(serverIp string, serverPort int) *Client {
 	return client
 }
 
-// ListenAndPrintMsg reads message from conn and prints the message to user console
-func (c *Client) ListenAndPrintMsg() {
-	_, err := io.Copy(os.Stdout, c.conn)
-	fmt.Println("Connection closed by server")
-	if err != nil {
-		fmt.Println("Failed receiving message from server, err:", err)
+// ListenAndSend reads message from user and sends the message to the server
+func (c *Client) ListenAndSend() {
+	defer c.conn.Close()
+
+	_, err := io.Copy(c.conn, os.Stdin)
+	if err != nil && !errors.Is(err, net.ErrClosed) {
+		fmt.Println("Failed sending message to server, err:", err)
 	}
 }
 
 func (c *Client) Run() {
-	go c.ListenAndPrintMsg()
+	defer c.conn.Close()
 
-	// FIXME: when connection is closed by server, io.Copy does not return, until user sends some message with TWO returns
-	_, err := io.Copy(c.conn, os.Stdin)
-	if err != nil {
-		fmt.Println("Failed sending message to server, err:", err)
+	go c.ListenAndSend()
+
+	// read message from conn and print the message to user console
+	_, err := io.Copy(os.Stdout, c.conn)
+	if err != nil && !errors.Is(err, net.ErrClosed) {
+		fmt.Println("Failed receiving message from server, err:", err)
 	}
 }
